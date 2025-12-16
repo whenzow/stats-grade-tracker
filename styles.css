@@ -580,7 +580,7 @@ body.dark-mode .guide-step h4 {
 }
 
 .guide-step .tip {
-    color: rgb(52, 60, 196);
+    color: rgb(88, 209, 66);
     font-style: italic;
     margin-top: 10px;
 }
@@ -1119,5 +1119,6 @@ body.dark-mode ::-webkit-scrollbar-thumb {
 body.dark-mode ::-webkit-scrollbar-thumb:hover {
     background: var(--border-color);
 }
+
 
 
