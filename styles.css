@@ -580,7 +580,7 @@ body.dark-mode .guide-step h4 {
 }
 
 .guide-step .tip {
-    color: #f4d7dc
+    color: rgb(88, 209, 66);
     font-style: italic;
     margin-top: 10px;
 }
@@ -594,9 +594,13 @@ body.dark-mode .guide-step h4 {
 }
 
 .guide-features h4 {
-    color: #800020;
+    color: #7c2421;
     margin-bottom: 15px;
     font-size: 20px;
+}
+
+body.dark-mode .guide-features h4 {
+    color: #d9534f;
 }
 
 .features-grid {
@@ -1119,7 +1123,4 @@ body.dark-mode ::-webkit-scrollbar-thumb {
 body.dark-mode ::-webkit-scrollbar-thumb:hover {
     background: var(--border-color);
 }
-
-
-
 
