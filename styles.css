@@ -580,7 +580,7 @@ body.dark-mode .guide-step h4 {
 }
 
 .guide-step .tip {
-    color: #0c5460;
+    color: rgb(173, 197, 230);
     font-style: italic;
     margin-top: 10px;
 }
