@@ -19,6 +19,8 @@ let appState = {
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
+    initializeTheme();
+    initializeMobileMenu();
 });
 
 function initializeApp() {
@@ -778,6 +780,12 @@ function updateChart() {
         gradeChart.destroy();
     }
     
+    // Get theme colors
+    const isDark = document.body.classList.contains('dark-mode');
+    const textColor = isDark ? '#e0e0e0' : '#000000';
+    const gridColor = isDark ? '#404040' : '#f0f0f0';
+    const titleColor = isDark ? '#a0002a' : '#800020';
+    
     gradeChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -794,15 +802,29 @@ function updateChart() {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: true,
             scales: {
                 x: {
-                    stacked: true
+                    stacked: true,
+                    ticks: {
+                        color: textColor
+                    },
+                    grid: {
+                        color: gridColor
+                    }
                 },
                 y: {
                     stacked: true,
                     title: {
                         display: true,
-                        text: 'Weight (%)'
+                        text: 'Weight (%)',
+                        color: textColor
+                    },
+                    ticks: {
+                        color: textColor
+                    },
+                    grid: {
+                        color: gridColor
                     }
                 }
             },
@@ -814,10 +836,13 @@ function updateChart() {
                         family: 'Poppins',
                         size: 18
                     },
-                    color: '#800020'
+                    color: titleColor
                 },
                 legend: {
-                    position: 'bottom'
+                    position: 'bottom',
+                    labels: {
+                        color: textColor
+                    }
                 }
             }
         }
@@ -1039,6 +1064,87 @@ function loadFromStorage() {
 
 // Auto-save on changes
 setInterval(saveToStorage, 5000); // Save every 5 seconds
+
+// Theme Management
+function initializeTheme() {
+    // Check for saved theme preference or default to light mode
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        document.body.classList.add('dark-mode');
+    }
+    
+    updateThemeToggle();
+    
+    // Theme toggle button
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+    }
+}
+
+function toggleTheme() {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    updateThemeToggle();
+    
+    // Update Chart.js colors if chart exists
+    if (gradeChart) {
+        updateChart();
+    }
+}
+
+function updateThemeToggle() {
+    const themeToggle = document.getElementById('theme-toggle');
+    if (!themeToggle) return;
+    
+    const isDark = document.body.classList.contains('dark-mode');
+    const text = themeToggle.querySelector('.theme-toggle-text');
+    if (text) {
+        text.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+    }
+}
+
+// Mobile Menu Management
+function initializeMobileMenu() {
+    const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const mobileOverlay = document.getElementById('mobile-overlay');
+    
+    if (!mobileMenuToggle || !sidebar || !mobileOverlay) return;
+    
+    // Toggle menu
+    mobileMenuToggle.addEventListener('click', function() {
+        sidebar.classList.toggle('mobile-open');
+        mobileOverlay.classList.toggle('active');
+    });
+    
+    // Close menu when overlay is clicked
+    mobileOverlay.addEventListener('click', function() {
+        sidebar.classList.remove('mobile-open');
+        mobileOverlay.classList.remove('active');
+    });
+    
+    // Close menu when clicking a menu item (on mobile)
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.addEventListener('click', function() {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('mobile-open');
+                mobileOverlay.classList.remove('active');
+            }
+        });
+    });
+    
+    // Close menu on window resize to desktop
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 768) {
+            sidebar.classList.remove('mobile-open');
+            mobileOverlay.classList.remove('active');
+        }
+    });
+}
 
 // Export functions for onclick handlers
 window.addScore = addScore;
