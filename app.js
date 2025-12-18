@@ -1,20 +1,75 @@
 // Application State
 let appState = {
-    criteria: [],
-    gradeScale: [],
-    componentScores: {},
-    examScores: {},
-    finalExam: { score: 0, total: 100, include: true },
-    settings: {
-        hasFinal: true,
-        hasExemption: false,
-        passingExamPercent: 60,
-        minExamsPassed: 2,
-        minPrefinalPercent: 72,
-        finalWeight: 20
-    },
-    results: null
+    courses: {}, // Object to store multiple courses: { courseId: courseData }
+    currentCourseId: null, // ID of currently active course
+    nextCourseId: 1 // Counter for generating unique course IDs
 };
+
+// Helper function to get current course data
+function getCurrentCourse() {
+    if (!appState.currentCourseId || !appState.courses[appState.currentCourseId]) {
+        // Create default course if none exists
+        if (Object.keys(appState.courses).length === 0) {
+            createNewCourse('Course 1');
+        }
+    }
+    return appState.courses[appState.currentCourseId];
+}
+
+// Helper function to set current course data
+function setCurrentCourse(data) {
+    if (appState.currentCourseId) {
+        appState.courses[appState.currentCourseId] = data;
+        saveToStorage();
+    }
+}
+
+// Create a new course
+function createNewCourse(name) {
+    const courseId = `course_${appState.nextCourseId++}`;
+    appState.courses[courseId] = {
+        id: courseId,
+        name: name,
+        criteria: [],
+        gradeScale: [],
+        componentScores: {},
+        examScores: {},
+        finalExam: { score: 0, total: 100, include: true },
+        settings: {
+            hasFinal: true,
+            hasExemption: false,
+            passingExamPercent: 60,
+            minExamsPassed: 2,
+            minPrefinalPercent: 72,
+            finalWeight: 20
+        },
+        results: null
+    };
+    appState.currentCourseId = courseId;
+    return courseId;
+}
+
+// Delete a course
+function deleteCourse(courseId) {
+    if (Object.keys(appState.courses).length <= 1) {
+        alert('Cannot delete the last course. Please create another course first.');
+        return false;
+    }
+    
+    delete appState.courses[courseId];
+    
+    // If deleted course was current, switch to first available
+    if (appState.currentCourseId === courseId) {
+        const remainingCourses = Object.keys(appState.courses);
+        if (remainingCourses.length > 0) {
+            appState.currentCourseId = remainingCourses[0];
+        } else {
+            appState.currentCourseId = null;
+        }
+    }
+    
+    return true;
+}
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -26,6 +81,9 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeApp() {
     // Tab navigation
     setupTabNavigation();
+    
+    // Setup course management
+    setupCourseManagement();
     
     // Setup criteria handlers
     setupCriteriaHandlers();
@@ -44,6 +102,256 @@ function initializeApp() {
     
     // Load from localStorage if available
     loadFromStorage();
+    
+    // Initialize course selector and dashboard
+    updateCourseSelector();
+    updateDashboard();
+}
+
+// Course Management Setup
+function setupCourseManagement() {
+    // Add course button
+    document.getElementById('add-course-btn').addEventListener('click', function() {
+        const courseName = prompt('Enter course name:', `Course ${Object.keys(appState.courses).length + 1}`);
+        if (courseName && courseName.trim()) {
+            createNewCourse(courseName.trim());
+            updateCourseSelector();
+            updateDashboard();
+            updateAllDisplays();
+        }
+    });
+    
+    // Rename course button
+    document.getElementById('rename-course-btn').addEventListener('click', function() {
+        if (!appState.currentCourseId) return;
+        
+        const currentCourse = getCurrentCourse();
+        const newName = prompt('Enter new course name:', currentCourse.name);
+        if (newName && newName.trim() && newName.trim() !== currentCourse.name) {
+            currentCourse.name = newName.trim();
+            setCurrentCourse(currentCourse);
+            updateCourseSelector();
+            updateDashboard();
+        }
+    });
+    
+    // Delete course button
+    document.getElementById('delete-course-btn').addEventListener('click', function() {
+        if (!appState.currentCourseId) return;
+        
+        const currentCourse = getCurrentCourse();
+        if (confirm(`Are you sure you want to delete "${currentCourse.name}"?`)) {
+            if (deleteCourse(appState.currentCourseId)) {
+                updateCourseSelector();
+                updateDashboard();
+                updateAllDisplays();
+            }
+        }
+    });
+    
+    // Course selector change
+    document.getElementById('course-selector').addEventListener('change', function() {
+        const courseId = this.value;
+        if (courseId && appState.courses[courseId]) {
+            appState.currentCourseId = courseId;
+            updateAllDisplays();
+        }
+    });
+}
+
+// Update course selector dropdown
+function updateCourseSelector() {
+    const selector = document.getElementById('course-selector');
+    selector.innerHTML = '';
+    
+    const courseIds = Object.keys(appState.courses);
+    if (courseIds.length === 0) {
+        selector.innerHTML = '<option value="">No courses</option>';
+        return;
+    }
+    
+    courseIds.forEach(courseId => {
+        const course = appState.courses[courseId];
+        const option = document.createElement('option');
+        option.value = courseId;
+        option.textContent = course.name;
+        if (courseId === appState.currentCourseId) {
+            option.selected = true;
+        }
+        selector.appendChild(option);
+    });
+}
+
+// Update all displays when switching courses
+function updateAllDisplays() {
+    const course = getCurrentCourse();
+    
+    // Update form inputs
+    if (course && course.settings) {
+        document.getElementById('has-final').checked = course.settings.hasFinal;
+        document.getElementById('has-exemption').checked = course.settings.hasExemption;
+        document.getElementById('passing-exam-percent').value = course.settings.passingExamPercent || 60;
+        document.getElementById('min-exams-passed').value = course.settings.minExamsPassed || 2;
+        document.getElementById('min-prefinal-percent').value = course.settings.minPrefinalPercent || 72;
+        document.getElementById('final-weight').value = course.settings.finalWeight || 20;
+        
+        document.getElementById('has-exemption-label').style.display = course.settings.hasFinal ? 'block' : 'none';
+        document.getElementById('exemption-settings').style.display = course.settings.hasExemption ? 'block' : 'none';
+    }
+    
+    updateCriteriaDisplay();
+    updateGradeScaleDisplay();
+    updateScoreInputs();
+    if (course.results) {
+        displayResults();
+    }
+}
+
+// Update Dashboard
+function updateDashboard() {
+    const container = document.getElementById('dashboard-content');
+    if (!container) return;
+    
+    const courseIds = Object.keys(appState.courses);
+    
+    if (courseIds.length === 0) {
+        container.innerHTML = '<p style="text-align: center; padding: 20px;">No courses yet. Click "Add Course" to get started!</p>';
+        return;
+    }
+    
+    let html = '<div class="dashboard-summary">';
+    
+    // Calculate semester GPA
+    let totalGPA = 0;
+    let coursesWithGrades = 0;
+    const courseCards = [];
+    
+    courseIds.forEach(courseId => {
+        const course = appState.courses[courseId];
+        const isActive = courseId === appState.currentCourseId;
+        
+        let finalGrade = null;
+        let collegeGrade = null;
+        let percentage = null;
+        
+        if (course.results) {
+            percentage = course.results.finalGrade;
+            if (course.gradeScale.length > 0) {
+                collegeGrade = getCollegeGradeForCourse(course, percentage);
+            }
+        }
+        
+        courseCards.push({
+            courseId,
+            course,
+            isActive,
+            percentage,
+            collegeGrade
+        });
+        
+        if (collegeGrade && !isNaN(parseFloat(collegeGrade)) && parseFloat(collegeGrade) <= 5.0) {
+            // Convert to 4.0 scale for GPA calculation (assuming 1.0 = 4.0, 5.0 = 0.0)
+            const gradeValue = parseFloat(collegeGrade);
+            let gpaValue = 0;
+            if (gradeValue <= 1.0) gpaValue = 4.0;
+            else if (gradeValue <= 1.25) gpaValue = 3.75;
+            else if (gradeValue <= 1.5) gpaValue = 3.5;
+            else if (gradeValue <= 1.75) gpaValue = 3.25;
+            else if (gradeValue <= 2.0) gpaValue = 3.0;
+            else if (gradeValue <= 2.25) gpaValue = 2.75;
+            else if (gradeValue <= 2.5) gpaValue = 2.5;
+            else if (gradeValue <= 2.75) gpaValue = 2.25;
+            else if (gradeValue <= 3.0) gpaValue = 2.0;
+            else if (gradeValue <= 4.0) gpaValue = 1.0;
+            else gpaValue = 0.0;
+            
+            totalGPA += gpaValue;
+            coursesWithGrades++;
+        }
+    });
+    
+    const semesterGPA = coursesWithGrades > 0 ? (totalGPA / coursesWithGrades).toFixed(2) : null;
+    
+    // Display semester summary
+    if (semesterGPA !== null) {
+        html += `
+            <div class="semester-summary-box">
+                <h3><i class="fas fa-graduation-cap"></i> Semester GPA</h3>
+                <div class="semester-gpa-value">${semesterGPA}</div>
+                <p>Based on ${coursesWithGrades} course${coursesWithGrades !== 1 ? 's' : ''}</p>
+            </div>
+        `;
+    }
+    
+    html += '<h3 style="margin-top: 20px; margin-bottom: 15px;"><i class="fas fa-book"></i> Your Courses</h3>';
+    html += '<div class="courses-grid">';
+    
+    courseCards.forEach(({ courseId, course, isActive, percentage, collegeGrade }) => {
+        html += `
+            <div class="course-card ${isActive ? 'active' : ''}" data-course-id="${courseId}" onclick="switchToCourse('${courseId}')">
+                <div class="course-card-header">
+                    <div class="course-card-name">${course.name}</div>
+                    ${isActive ? '<span style="color: var(--border-color);"><i class="fas fa-check-circle"></i></span>' : ''}
+                </div>
+                <div class="course-card-stats">
+                    <div class="course-stat">
+                        <div class="course-stat-label">Final Grade</div>
+                        <div class="course-stat-value">${percentage !== null ? percentage.toFixed(2) + '%' : 'N/A'}</div>
+                    </div>
+                    <div class="course-stat">
+                        <div class="course-stat-label">College Grade</div>
+                        <div class="course-stat-value">${collegeGrade || 'N/A'}</div>
+                    </div>
+                    <div class="course-stat">
+                        <div class="course-stat-label">Components</div>
+                        <div class="course-stat-value">${course.criteria.length}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div></div>';
+    container.innerHTML = html;
+}
+
+// Switch to a course
+function switchToCourse(courseId) {
+    if (appState.courses[courseId]) {
+        appState.currentCourseId = courseId;
+        document.getElementById('course-selector').value = courseId;
+        updateAllDisplays();
+        updateDashboard();
+        // Switch to setup tab
+        document.querySelector('.menu-item[data-tab="setup"]').click();
+    }
+}
+
+// Export for onclick handler
+window.switchToCourse = switchToCourse;
+
+// Helper to get college grade for a specific course
+function getCollegeGradeForCourse(course, finalPct) {
+    if (!course.gradeScale || course.gradeScale.length === 0) return 'No Scale Set';
+    
+    const finalPctFloored = Math.floor(finalPct * 100) / 100;
+    const sortedScale = [...course.gradeScale].sort((a, b) => b.min - a.min);
+    
+    for (let i = 0; i < sortedScale.length; i++) {
+        const gs = sortedScale[i];
+        
+        if (gs.grade === '4.00') {
+            return '4.00';
+        } else if (gs.grade === '5.00') {
+            if (finalPctFloored <= gs.max) return '5.00';
+        } else {
+            if (finalPctFloored >= gs.min && (gs.max === 0 || finalPctFloored <= gs.max)) {
+                return gs.grade;
+            }
+        }
+    }
+    
+    return '5.00';
 }
 
 // Tab Navigation
@@ -62,7 +370,15 @@ function setupTabNavigation() {
             
             // Show corresponding tab
             tabContents.forEach(tab => tab.classList.remove('active'));
-            document.getElementById(`${tabName}-tab`).classList.add('active');
+            const targetTab = document.getElementById(`${tabName}-tab`);
+            if (targetTab) {
+                targetTab.classList.add('active');
+            }
+            
+            // Update dashboard when switching to dashboard tab
+            if (tabName === 'dashboard') {
+                updateDashboard();
+            }
         });
     });
 }
@@ -71,6 +387,7 @@ function setupTabNavigation() {
 function setupCriteriaHandlers() {
     // Add component
     document.getElementById('add-component').addEventListener('click', function() {
+        const course = getCurrentCourse();
         const name = document.getElementById('component-name').value.trim();
         const weight = parseFloat(document.getElementById('component-weight').value);
         
@@ -80,16 +397,17 @@ function setupCriteriaHandlers() {
         }
         
         // Check for duplicates
-        if (appState.criteria.some(c => c.component === name && c.type === 'Normal')) {
+        if (course.criteria.some(c => c.component === name && c.type === 'Normal')) {
             alert('Component name already exists');
             return;
         }
         
-        appState.criteria.push({
+        course.criteria.push({
             component: name,
             weight: weight,
             type: 'Normal'
         });
+        setCurrentCourse(course);
         
         document.getElementById('component-name').value = '';
         document.getElementById('component-weight').value = '0';
@@ -99,6 +417,7 @@ function setupCriteriaHandlers() {
     
     // Add exam
     document.getElementById('add-exam').addEventListener('click', function() {
+        const course = getCurrentCourse();
         const name = document.getElementById('exam-name').value.trim();
         const weight = parseFloat(document.getElementById('exam-weight').value);
         
@@ -107,11 +426,12 @@ function setupCriteriaHandlers() {
             return;
         }
         
-        appState.criteria.push({
+        course.criteria.push({
             component: name,
             weight: weight,
             type: 'Exam'
         });
+        setCurrentCourse(course);
         
         document.getElementById('exam-name').value = '';
         document.getElementById('exam-weight').value = '0';
@@ -122,9 +442,11 @@ function setupCriteriaHandlers() {
     // Clear criteria
     document.getElementById('clear-criteria').addEventListener('click', function() {
         if (confirm('Are you sure you want to clear all criteria?')) {
-            appState.criteria = [];
-            appState.componentScores = {};
-            appState.examScores = {};
+            const course = getCurrentCourse();
+            course.criteria = [];
+            course.componentScores = {};
+            course.examScores = {};
+            setCurrentCourse(course);
             updateCriteriaDisplay();
             updateScoreInputs();
         }
@@ -132,45 +454,59 @@ function setupCriteriaHandlers() {
     
     // Final exam checkbox
     document.getElementById('has-final').addEventListener('change', function() {
-        appState.settings.hasFinal = this.checked;
+        const course = getCurrentCourse();
+        course.settings.hasFinal = this.checked;
+        setCurrentCourse(course);
         document.getElementById('has-exemption-label').style.display = this.checked ? 'block' : 'none';
         if (!this.checked) {
-            appState.settings.hasExemption = false;
+            course.settings.hasExemption = false;
             document.getElementById('has-exemption').checked = false;
             document.getElementById('exemption-settings').style.display = 'none';
+            setCurrentCourse(course);
         }
         updateScoreInputs();
     });
     
     // Exemption checkbox
     document.getElementById('has-exemption').addEventListener('change', function() {
-        appState.settings.hasExemption = this.checked;
+        const course = getCurrentCourse();
+        course.settings.hasExemption = this.checked;
+        setCurrentCourse(course);
         document.getElementById('exemption-settings').style.display = this.checked ? 'block' : 'none';
     });
     
     // Settings inputs
     document.getElementById('passing-exam-percent').addEventListener('change', function() {
-        appState.settings.passingExamPercent = parseFloat(this.value);
+        const course = getCurrentCourse();
+        course.settings.passingExamPercent = parseFloat(this.value);
+        setCurrentCourse(course);
     });
     
     document.getElementById('min-exams-passed').addEventListener('change', function() {
-        appState.settings.minExamsPassed = parseInt(this.value);
+        const course = getCurrentCourse();
+        course.settings.minExamsPassed = parseInt(this.value);
+        setCurrentCourse(course);
     });
     
     document.getElementById('min-prefinal-percent').addEventListener('change', function() {
-        appState.settings.minPrefinalPercent = parseFloat(this.value);
+        const course = getCurrentCourse();
+        course.settings.minPrefinalPercent = parseFloat(this.value);
+        setCurrentCourse(course);
     });
     
     document.getElementById('final-weight').addEventListener('change', function() {
-        appState.settings.finalWeight = parseFloat(this.value);
+        const course = getCurrentCourse();
+        course.settings.finalWeight = parseFloat(this.value);
+        setCurrentCourse(course);
         updateScoreInputs();
     });
 }
 
 // Update Criteria Display
 function updateCriteriaDisplay() {
-    const normalCriteria = appState.criteria.filter(c => c.type === 'Normal');
-    const examCriteria = appState.criteria.filter(c => c.type === 'Exam');
+    const course = getCurrentCourse();
+    const normalCriteria = course.criteria.filter(c => c.type === 'Normal');
+    const examCriteria = course.criteria.filter(c => c.type === 'Exam');
     
     // Display normal components
     let html = '<table class="data-table"><thead><tr><th>Component</th><th>Weight (%)</th></tr></thead><tbody>';
@@ -189,21 +525,22 @@ function updateCriteriaDisplay() {
     document.getElementById('exam-table-container').innerHTML = html;
     
     // Update total weight
-    let totalWeight = appState.criteria.reduce((sum, c) => sum + c.weight, 0);
-    if (appState.settings.hasFinal) {
-        totalWeight += appState.settings.finalWeight;
+    let totalWeight = course.criteria.reduce((sum, c) => sum + c.weight, 0);
+    if (course.settings.hasFinal) {
+        totalWeight += course.settings.finalWeight;
     }
     
     const warningText = Math.abs(totalWeight - 100) < 0.01 ? ' (Perfect!)' : ' (Warning: Should equal 100%)';
-    const finalText = appState.settings.hasFinal ? ` + Final Exam: ${appState.settings.finalWeight}% = ${totalWeight}%` : '';
+    const finalText = course.settings.hasFinal ? ` + Final Exam: ${course.settings.finalWeight}% = ${totalWeight}%` : '';
     document.getElementById('total-weight-display').innerHTML = 
-        `<h4>Total Weight: ${totalWeight - (appState.settings.hasFinal ? appState.settings.finalWeight : 0)}%${finalText}${warningText}</h4>`;
+        `<h4>Total Weight: ${totalWeight - (course.settings.hasFinal ? course.settings.finalWeight : 0)}%${finalText}${warningText}</h4>`;
 }
 
 // Grade Scale Setup Handlers
 function setupGradeScaleHandlers() {
     // Add grade
     document.getElementById('add-grade').addEventListener('click', function() {
+        const course = getCurrentCourse();
         const grade = document.getElementById('grade-college').value;
         const min = parseFloat(document.getElementById('min-percent').value);
         const max = parseFloat(document.getElementById('max-percent').value);
@@ -213,21 +550,25 @@ function setupGradeScaleHandlers() {
             return;
         }
         
-        appState.gradeScale.push({ grade, min, max });
+        course.gradeScale.push({ grade, min, max });
+        setCurrentCourse(course);
         updateGradeScaleDisplay();
     });
     
     // Clear grades
     document.getElementById('clear-grades').addEventListener('click', function() {
         if (confirm('Are you sure you want to clear the grade scale?')) {
-            appState.gradeScale = [];
+            const course = getCurrentCourse();
+            course.gradeScale = [];
+            setCurrentCourse(course);
             updateGradeScaleDisplay();
         }
     });
     
     // Set default UP grade scale
     document.getElementById('set-default-grades').addEventListener('click', function() {
-        appState.gradeScale = [
+        const course = getCurrentCourse();
+        course.gradeScale = [
             { grade: '1.00', min: 95, max: 100 },
             { grade: '1.25', min: 90, max: 94.9999 },
             { grade: '1.50', min: 85, max: 89.9999 },
@@ -240,14 +581,16 @@ function setupGradeScaleHandlers() {
             { grade: '4.00', min: 55, max: 59.9999 },
             { grade: '5.00', min: 0, max: 54.9999 }
         ];
+        setCurrentCourse(course);
         updateGradeScaleDisplay();
     });
 }
 
 // Update Grade Scale Display
 function updateGradeScaleDisplay() {
+    const course = getCurrentCourse();
     let html = '<table class="data-table"><thead><tr><th>Grade</th><th>Min (%)</th><th>Max (%)</th></tr></thead><tbody>';
-    appState.gradeScale.forEach(gs => {
+    course.gradeScale.forEach(gs => {
         html += `<tr><td>${gs.grade}</td><td>${gs.min}</td><td>${gs.max}</td></tr>`;
     });
     html += '</tbody></table>';
@@ -261,8 +604,9 @@ function setupScoreEntryHandlers() {
 
 function updateScoreInputs() {
     const container = document.getElementById('score-inputs-container');
+    const course = getCurrentCourse();
     
-    if (appState.criteria.length === 0) {
+    if (course.criteria.length === 0) {
         container.innerHTML = '<p>Please set up your grade criteria first in the Setup tab.</p>';
         return;
     }
@@ -270,13 +614,13 @@ function updateScoreInputs() {
     let html = '';
     
     // Normal Components
-    const normalCriteria = appState.criteria.filter(c => c.type === 'Normal');
+    const normalCriteria = course.criteria.filter(c => c.type === 'Normal');
     if (normalCriteria.length > 0) {
         html += '<h4>Normal Components:</h4>';
         normalCriteria.forEach((criteria, index) => {
             const key = `comp_${index}`;
-            if (!appState.componentScores[key]) {
-                appState.componentScores[key] = [];
+            if (!course.componentScores[key]) {
+                course.componentScores[key] = [];
             }
             
             html += `
@@ -305,13 +649,13 @@ function updateScoreInputs() {
     }
     
     // Examinations
-    const examCriteria = appState.criteria.filter(c => c.type === 'Exam');
+    const examCriteria = course.criteria.filter(c => c.type === 'Exam');
     if (examCriteria.length > 0) {
         html += '<h4>Examinations:</h4>';
         examCriteria.forEach((criteria, index) => {
             const key = `exam_${index}`;
-            if (!appState.examScores[key]) {
-                appState.examScores[key] = [];
+            if (!course.examScores[key]) {
+                course.examScores[key] = [];
             }
             
             html += `
@@ -340,20 +684,20 @@ function updateScoreInputs() {
     }
     
     // Final Exam
-    if (appState.settings.hasFinal) {
+    if (course.settings.hasFinal) {
         html += '<h4>Final Exam:</h4>';
         html += `
             <div class="score-section">
                 <div class="score-section-header">
-                    <div class="score-section-title">Final Exam (${appState.settings.finalWeight}%)</div>
+                    <div class="score-section-title">Final Exam (${course.settings.finalWeight}%)</div>
                     <label>
-                        <input type="checkbox" id="include-final" ${appState.finalExam.include ? 'checked' : ''}>
+                        <input type="checkbox" id="include-final" ${course.finalExam.include ? 'checked' : ''}>
                         Include in calculation
                     </label>
                 </div>
                 <div class="score-input-row">
-                    <input type="number" id="final-score" placeholder="Score" min="0" value="${appState.finalExam.score}">
-                    <input type="number" id="final-total" placeholder="Max Score" min="1" value="${appState.finalExam.total}">
+                    <input type="number" id="final-score" placeholder="Score" min="0" value="${course.finalExam.score}">
+                    <input type="number" id="final-total" placeholder="Max Score" min="1" value="${course.finalExam.total}">
                 </div>
             </div>
         `;
@@ -362,26 +706,32 @@ function updateScoreInputs() {
     container.innerHTML = html;
     
     // Setup final exam handlers after innerHTML is set
-    if (appState.settings.hasFinal) {
+    if (course.settings.hasFinal) {
         const includeFinal = document.getElementById('include-final');
         const finalScore = document.getElementById('final-score');
         const finalTotal = document.getElementById('final-total');
         
         if (includeFinal) {
             includeFinal.addEventListener('change', function() {
-                appState.finalExam.include = this.checked;
+                const course = getCurrentCourse();
+                course.finalExam.include = this.checked;
+                setCurrentCourse(course);
             });
         }
         
         if (finalScore) {
             finalScore.addEventListener('change', function() {
-                appState.finalExam.score = parseFloat(this.value) || 0;
+                const course = getCurrentCourse();
+                course.finalExam.score = parseFloat(this.value) || 0;
+                setCurrentCourse(course);
             });
         }
         
         if (finalTotal) {
             finalTotal.addEventListener('change', function() {
-                appState.finalExam.total = parseFloat(this.value) || 100;
+                const course = getCurrentCourse();
+                course.finalExam.total = parseFloat(this.value) || 100;
+                setCurrentCourse(course);
             });
         }
     }
@@ -405,17 +755,20 @@ function updateScoreInputs() {
 }
 
 function getIncludeStatus(key, type) {
-    const storageKey = `include_${key}_${type}`;
+    const course = getCurrentCourse();
+    const storageKey = `include_${course.id}_${key}_${type}`;
     const stored = localStorage.getItem(storageKey);
     return stored !== null ? stored === 'true' : true;
 }
 
 function setIncludeStatus(key, type, value) {
-    const storageKey = `include_${key}_${type}`;
+    const course = getCurrentCourse();
+    const storageKey = `include_${course.id}_${key}_${type}`;
     localStorage.setItem(storageKey, value);
 }
 
 function addScore(key, type) {
+    const course = getCurrentCourse();
     const scoreInput = document.getElementById(`score-${key}`);
     const totalInput = document.getElementById(`total-${key}`);
     
@@ -427,12 +780,13 @@ function addScore(key, type) {
         return;
     }
     
-    const scores = type === 'component' ? appState.componentScores : appState.examScores;
+    const scores = type === 'component' ? course.componentScores : course.examScores;
     if (!scores[key]) {
         scores[key] = [];
     }
     
     scores[key].push({ score, maxScore: total });
+    setCurrentCourse(course);
     
     scoreInput.value = '0';
     totalInput.value = '100';
@@ -441,6 +795,7 @@ function addScore(key, type) {
 }
 
 function removeSelectedScores(key, type) {
+    const course = getCurrentCourse();
     const table = document.querySelector(`#score-table-${key} table`);
     if (!table) return;
     
@@ -452,15 +807,17 @@ function removeSelectedScores(key, type) {
         return;
     }
     
-    const scores = type === 'component' ? appState.componentScores : appState.examScores;
+    const scores = type === 'component' ? course.componentScores : course.examScores;
     scores[key] = scores[key].filter((_, index) => !indices.includes(index));
+    setCurrentCourse(course);
     
     updateScoreTable(key, type);
 }
 
 function updateScoreTable(key, type) {
+    const course = getCurrentCourse();
     const container = document.getElementById(`score-table-${key}`);
-    const scores = type === 'component' ? appState.componentScores[key] : appState.examScores[key];
+    const scores = type === 'component' ? course.componentScores[key] : course.examScores[key];
     
     if (!scores || scores.length === 0) {
         container.innerHTML = '<p>No scores entered yet.</p>';
@@ -498,12 +855,14 @@ function updateScoreTable(key, type) {
 
 // Calculate Final Grade
 function calculateFinalGrade() {
-    if (appState.criteria.length === 0) {
+    const course = getCurrentCourse();
+    
+    if (course.criteria.length === 0) {
         alert('Please set up your grade criteria first');
         return;
     }
     
-    if (appState.gradeScale.length === 0) {
+    if (course.gradeScale.length === 0) {
         alert('Please set up your grade scale first');
         return;
     }
@@ -515,12 +874,12 @@ function calculateFinalGrade() {
     let examsPassed = 0;
     
     // Calculate normal components
-    const normalCriteria = appState.criteria.filter(c => c.type === 'Normal');
+    const normalCriteria = course.criteria.filter(c => c.type === 'Normal');
     normalCriteria.forEach((criteria, index) => {
         const key = `comp_${index}`;
         if (!getIncludeStatus(key, 'component')) return;
         
-        const scores = appState.componentScores[key];
+        const scores = course.componentScores[key];
         if (!scores || scores.length === 0) return;
         
         const totalScore = scores.reduce((sum, s) => sum + s.score, 0);
@@ -540,12 +899,12 @@ function calculateFinalGrade() {
     });
     
     // Calculate exam scores
-    const examCriteria = appState.criteria.filter(c => c.type === 'Exam');
+    const examCriteria = course.criteria.filter(c => c.type === 'Exam');
     examCriteria.forEach((criteria, index) => {
         const key = `exam_${index}`;
         if (!getIncludeStatus(key, 'exam')) return;
         
-        const scores = appState.examScores[key];
+        const scores = course.examScores[key];
         if (!scores || scores.length === 0) return;
         
         const totalScore = scores.reduce((sum, s) => sum + s.score, 0);
@@ -553,7 +912,7 @@ function calculateFinalGrade() {
         const percentage = (totalScore / totalPossible) * 100;
         const weightedScore = percentage * (criteria.weight / 100);
         
-        if (percentage >= appState.settings.passingExamPercent) {
+        if (percentage >= course.settings.passingExamPercent) {
             examsPassed++;
         }
         
@@ -573,29 +932,29 @@ function calculateFinalGrade() {
     
     // Check exemption eligibility
     let exemptEligible = false;
-    if (appState.settings.hasFinal && appState.settings.hasExemption) {
-        if (examsPassed >= appState.settings.minExamsPassed && 
-            prefinalPercentage >= appState.settings.minPrefinalPercent) {
+    if (course.settings.hasFinal && course.settings.hasExemption) {
+        if (examsPassed >= course.settings.minExamsPassed && 
+            prefinalPercentage >= course.settings.minPrefinalPercent) {
             exemptEligible = true;
         }
     }
     
     // Calculate final exam
     let finalScoreCalc = null;
-    if (appState.settings.hasFinal && appState.finalExam.include) {
-        if (appState.finalExam.total > 0 && appState.finalExam.score >= 0) {
-            const finalPercentage = (appState.finalExam.score / appState.finalExam.total) * 100;
-            const finalWeightedScore = finalPercentage * (appState.settings.finalWeight / 100);
+    if (course.settings.hasFinal && course.finalExam.include) {
+        if (course.finalExam.total > 0 && course.finalExam.score >= 0) {
+            const finalPercentage = (course.finalExam.score / course.finalExam.total) * 100;
+            const finalWeightedScore = finalPercentage * (course.settings.finalWeight / 100);
             
             finalScoreCalc = {
                 component: 'Final Exam',
                 percentage: finalPercentage,
-                weight: appState.settings.finalWeight,
+                weight: course.settings.finalWeight,
                 weightedScore: finalWeightedScore
             };
             
             totalWeightedScore += finalWeightedScore;
-            totalWeightUsed += appState.settings.finalWeight;
+            totalWeightUsed += course.settings.finalWeight;
         }
     }
     
@@ -603,7 +962,7 @@ function calculateFinalGrade() {
     const finalGrade = totalWeightUsed > 0 ? (totalWeightedScore / totalWeightUsed) * 100 : 0;
     
     // Store results
-    appState.results = {
+    course.results = {
         normalScores,
         examScores,
         finalScore: finalScoreCalc,
@@ -613,9 +972,13 @@ function calculateFinalGrade() {
         examsPassed,
         totalWeightUsed
     };
+    setCurrentCourse(course);
     
     // Display results
     displayResults();
+    
+    // Update dashboard
+    updateDashboard();
     
     // Switch to results tab
     document.querySelector('.menu-item[data-tab="results"]').click();
@@ -623,9 +986,10 @@ function calculateFinalGrade() {
 
 // Display Results
 function displayResults() {
-    if (!appState.results) return;
+    const course = getCurrentCourse();
+    if (!course.results) return;
     
-    const results = appState.results;
+    const results = course.results;
     const finalPct = results.finalGrade;
     const collegeGrade = getCollegeGrade(finalPct);
     
@@ -676,35 +1040,15 @@ function displayResults() {
 
 // Get College Grade
 function getCollegeGrade(finalPct) {
-    if (appState.gradeScale.length === 0) return 'No Scale Set';
-    
-    // Use floor to round down
-    const finalPctFloored = Math.floor(finalPct * 100) / 100;
-    
-    // Sort by minimum percentage descending
-    const sortedScale = [...appState.gradeScale].sort((a, b) => b.min - a.min);
-    
-    for (let i = 0; i < sortedScale.length; i++) {
-        const gs = sortedScale[i];
-        
-        if (gs.grade === '4.00') {
-            return '4.00';
-        } else if (gs.grade === '5.00') {
-            if (finalPctFloored <= gs.max) return '5.00';
-        } else {
-            if (finalPctFloored >= gs.min && (gs.max === 0 || finalPctFloored <= gs.max)) {
-                return gs.grade;
-            }
-        }
-    }
-    
-    return '5.00';
+    const course = getCurrentCourse();
+    return getCollegeGradeForCourse(course, finalPct);
 }
 
 // Update Chart
 let gradeChart = null;
 
 function updateChart() {
+    const course = getCurrentCourse();
     const ctx = document.getElementById('grade-chart').getContext('2d');
     
     // Prepare chart data
@@ -714,10 +1058,10 @@ function updateChart() {
         lost: []
     };
     
-    const normalCriteria = appState.criteria.filter(c => c.type === 'Normal');
+    const normalCriteria = course.criteria.filter(c => c.type === 'Normal');
     normalCriteria.forEach((criteria, index) => {
         const key = `comp_${index}`;
-        const scores = appState.componentScores[key];
+        const scores = course.componentScores[key];
         const label = `${criteria.component}\n(${criteria.weight}%)`;
         
         if (scores && scores.length > 0) {
@@ -737,10 +1081,10 @@ function updateChart() {
         }
     });
     
-    const examCriteria = appState.criteria.filter(c => c.type === 'Exam');
+    const examCriteria = course.criteria.filter(c => c.type === 'Exam');
     examCriteria.forEach((criteria, index) => {
         const key = `exam_${index}`;
-        const scores = appState.examScores[key];
+        const scores = course.examScores[key];
         const label = `${criteria.component}\n(${criteria.weight}%)`;
         
         if (scores && scores.length > 0) {
@@ -760,19 +1104,19 @@ function updateChart() {
         }
     });
     
-    if (appState.settings.hasFinal) {
-        const label = `Final Exam\n(${appState.settings.finalWeight}%)`;
-        if (appState.finalExam.total > 0 && appState.finalExam.score > 0) {
-            const percentage = (appState.finalExam.score / appState.finalExam.total) * 100;
-            const achieved = percentage * (appState.settings.finalWeight / 100);
-            const lost = appState.settings.finalWeight - achieved;
+    if (course.settings.hasFinal) {
+        const label = `Final Exam\n(${course.settings.finalWeight}%)`;
+        if (course.finalExam.total > 0 && course.finalExam.score > 0) {
+            const percentage = (course.finalExam.score / course.finalExam.total) * 100;
+            const achieved = percentage * (course.settings.finalWeight / 100);
+            const lost = course.settings.finalWeight - achieved;
             chartData.labels.push(label);
             chartData.achieved.push(achieved);
             chartData.lost.push(lost);
         } else {
             chartData.labels.push(label);
             chartData.achieved.push(0);
-            chartData.lost.push(appState.settings.finalWeight);
+            chartData.lost.push(course.settings.finalWeight);
         }
     }
     
@@ -851,14 +1195,15 @@ function updateChart() {
 
 // Display Performance Analysis
 function displayPerformanceAnalysis() {
+    const course = getCurrentCourse();
     const container = document.getElementById('performance-analysis-container');
     
-    if (!appState.results || appState.gradeScale.length === 0) {
+    if (!course.results || course.gradeScale.length === 0) {
         container.innerHTML = '<p style="text-align: center; padding: 20px;">Please calculate your grades first and ensure grade scale is set up.</p>';
         return;
     }
     
-    const results = appState.results;
+    const results = course.results;
     const currentGrade = getCollegeGrade(results.finalGrade);
     const currentPercentage = results.finalGrade;
     
@@ -900,8 +1245,8 @@ function displayPerformanceAnalysis() {
                 <div class="exemption-content ${results.exemptEligible ? 'eligible' : 'not-eligible'}">
                     <h5 style="color: ${exemptionColor};"><i class="fas fa-${exemptionIcon}"></i> ${results.exemptEligible ? 'ELIGIBLE for Final Exam Exemption!' : 'NOT ELIGIBLE for Final Exam Exemption'}</h5>
                     <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px;">
-                        <p><strong>Exams Passed:</strong> ${results.examsPassed} / ${appState.settings.minExamsPassed} required</p>
-                        <p><strong>Prefinal Standing:</strong> ${results.prefinalPercentage.toFixed(2)}% (${appState.settings.minPrefinalPercent}% required)</p>
+                        <p><strong>Exams Passed:</strong> ${results.examsPassed} / ${course.settings.minExamsPassed} required</p>
+                        <p><strong>Prefinal Standing:</strong> ${results.prefinalPercentage.toFixed(2)}% (${course.settings.minPrefinalPercent}% required)</p>
                     </div>
                     ${results.exemptEligible ? '<p style="margin-top: 10px; color: #856404; font-style: italic;"><i class="fas fa-lightbulb"></i> You may choose to skip the final exam and keep your current grade.</p>' : ''}
                 </div>
@@ -934,7 +1279,7 @@ function displayPerformanceAnalysis() {
         });
     }
     
-    if (results.exemptEligible && appState.settings.hasFinal) {
+    if (results.exemptEligible && course.settings.hasFinal) {
         recommendations.push({
             type: 'decision',
             icon: 'question-circle',
@@ -964,13 +1309,11 @@ function setupSaveLoadHandlers() {
         const title = document.getElementById('save-title').value.trim() || 'GradeTracker';
         const filename = title.replace(/[^A-Za-z0-9_]/g, '_') + '.json';
         
+        // Save all courses
         const dataToSave = {
-            criteria: appState.criteria,
-            gradeScale: appState.gradeScale,
-            componentScores: appState.componentScores,
-            examScores: appState.examScores,
-            finalExam: appState.finalExam,
-            settings: appState.settings
+            courses: appState.courses,
+            currentCourseId: appState.currentCourseId,
+            nextCourseId: appState.nextCourseId
         };
         
         const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: 'application/json' });
@@ -991,31 +1334,48 @@ function setupSaveLoadHandlers() {
             try {
                 const data = JSON.parse(e.target.result);
                 
-                appState.criteria = data.criteria || [];
-                appState.gradeScale = data.gradeScale || [];
-                appState.componentScores = data.componentScores || {};
-                appState.examScores = data.examScores || {};
-                appState.finalExam = data.finalExam || { score: 0, total: 100, include: true };
-                appState.settings = data.settings || appState.settings;
+                // Support both old format (single course) and new format (multiple courses)
+                if (data.courses) {
+                    // New format with multiple courses
+                    appState.courses = data.courses || {};
+                    appState.currentCourseId = data.currentCourseId || Object.keys(appState.courses)[0] || null;
+                    appState.nextCourseId = data.nextCourseId || appState.nextCourseId;
+                } else {
+                    // Old format - migrate to new format
+                    const courseId = createNewCourse('Imported Course');
+                    const course = appState.courses[courseId];
+                    course.criteria = data.criteria || [];
+                    course.gradeScale = data.gradeScale || [];
+                    course.componentScores = data.componentScores || {};
+                    course.examScores = data.examScores || {};
+                    course.finalExam = data.finalExam || { score: 0, total: 100, include: true };
+                    course.settings = data.settings || course.settings;
+                    setCurrentCourse(course);
+                }
                 
                 // Update UI
+                updateCourseSelector();
                 updateCriteriaDisplay();
                 updateGradeScaleDisplay();
                 updateScoreInputs();
+                updateDashboard();
                 
                 // Update form inputs
-                document.getElementById('has-final').checked = appState.settings.hasFinal;
-                document.getElementById('has-exemption').checked = appState.settings.hasExemption;
-                document.getElementById('passing-exam-percent').value = appState.settings.passingExamPercent;
-                document.getElementById('min-exams-passed').value = appState.settings.minExamsPassed;
-                document.getElementById('min-prefinal-percent').value = appState.settings.minPrefinalPercent;
-                document.getElementById('final-weight').value = appState.settings.finalWeight;
-                
-                if (appState.settings.hasFinal) {
-                    document.getElementById('has-exemption-label').style.display = 'block';
-                }
-                if (appState.settings.hasExemption) {
-                    document.getElementById('exemption-settings').style.display = 'block';
+                const course = getCurrentCourse();
+                if (course) {
+                    document.getElementById('has-final').checked = course.settings.hasFinal;
+                    document.getElementById('has-exemption').checked = course.settings.hasExemption;
+                    document.getElementById('passing-exam-percent').value = course.settings.passingExamPercent;
+                    document.getElementById('min-exams-passed').value = course.settings.minExamsPassed;
+                    document.getElementById('min-prefinal-percent').value = course.settings.minPrefinalPercent;
+                    document.getElementById('final-weight').value = course.settings.finalWeight;
+                    
+                    if (course.settings.hasFinal) {
+                        document.getElementById('has-exemption-label').style.display = 'block';
+                    }
+                    if (course.settings.hasExemption) {
+                        document.getElementById('exemption-settings').style.display = 'block';
+                    }
                 }
                 
                 alert('File loaded successfully!');
@@ -1041,24 +1401,66 @@ function loadFromStorage() {
         const stored = localStorage.getItem('gradeTrackerData');
         if (stored) {
             const data = JSON.parse(stored);
-            appState = { ...appState, ...data };
             
+            // Support both old format (single course) and new format (multiple courses)
+            if (data.courses) {
+                // New format with multiple courses
+                appState.courses = data.courses || {};
+                appState.currentCourseId = data.currentCourseId || Object.keys(appState.courses)[0] || null;
+                appState.nextCourseId = data.nextCourseId || appState.nextCourseId;
+            } else if (data.criteria || data.gradeScale) {
+                // Old format - migrate to new format
+                const courseId = createNewCourse('Course 1');
+                const course = appState.courses[courseId];
+                course.criteria = data.criteria || [];
+                course.gradeScale = data.gradeScale || [];
+                course.componentScores = data.componentScores || {};
+                course.examScores = data.examScores || {};
+                course.finalExam = data.finalExam || { score: 0, total: 100, include: true };
+                course.settings = data.settings || course.settings;
+                setCurrentCourse(course);
+            }
+            
+            // Ensure at least one course exists
+            if (Object.keys(appState.courses).length === 0) {
+                createNewCourse('Course 1');
+            }
+            
+            updateCourseSelector();
             updateCriteriaDisplay();
             updateGradeScaleDisplay();
             updateScoreInputs();
+            updateDashboard();
             
             // Update form inputs
-            if (appState.settings) {
-                document.getElementById('has-final').checked = appState.settings.hasFinal;
-                document.getElementById('has-exemption').checked = appState.settings.hasExemption;
-                document.getElementById('passing-exam-percent').value = appState.settings.passingExamPercent || 60;
-                document.getElementById('min-exams-passed').value = appState.settings.minExamsPassed || 2;
-                document.getElementById('min-prefinal-percent').value = appState.settings.minPrefinalPercent || 72;
-                document.getElementById('final-weight').value = appState.settings.finalWeight || 20;
+            const course = getCurrentCourse();
+            if (course && course.settings) {
+                document.getElementById('has-final').checked = course.settings.hasFinal;
+                document.getElementById('has-exemption').checked = course.settings.hasExemption;
+                document.getElementById('passing-exam-percent').value = course.settings.passingExamPercent || 60;
+                document.getElementById('min-exams-passed').value = course.settings.minExamsPassed || 2;
+                document.getElementById('min-prefinal-percent').value = course.settings.minPrefinalPercent || 72;
+                document.getElementById('final-weight').value = course.settings.finalWeight || 20;
+                
+                if (course.settings.hasFinal) {
+                    document.getElementById('has-exemption-label').style.display = 'block';
+                }
+                if (course.settings.hasExemption) {
+                    document.getElementById('exemption-settings').style.display = 'block';
+                }
             }
+        } else {
+            // No stored data - create default course
+            createNewCourse('Course 1');
+            updateCourseSelector();
         }
     } catch (e) {
         console.error('Error loading from localStorage:', e);
+        // Create default course on error
+        if (Object.keys(appState.courses).length === 0) {
+            createNewCourse('Course 1');
+            updateCourseSelector();
+        }
     }
 }
 
