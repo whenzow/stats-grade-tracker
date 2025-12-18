@@ -191,6 +191,32 @@ body:not(.dark-mode) .theme-toggle i.fa-moon {
     cursor: pointer;
 }
 
+.course-units-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+    -moz-appearance: textfield;
+}
+
+.course-units-input:focus {
+    outline: none;
+    border-color: var(--border-color);
+    box-shadow: 0 0 0 2px rgba(0, 100, 0, 0.2);
+}
+
+/* Hide default spin buttons in webkit browsers for cleaner look */
+.course-units-input::-webkit-outer-spin-button,
+.course-units-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
 .course-selector:focus {
     outline: none;
     border-color: var(--border-color);
