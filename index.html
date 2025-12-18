@@ -34,9 +34,34 @@
             <div class="logo">
                 <h1>Grade Tracker</h1>
             </div>
+            
+            <!-- Course Management Section -->
+            <div class="course-management">
+                <div class="course-selector-container">
+                    <label for="course-selector" style="display: block; margin-bottom: 5px; font-weight: 500; color: var(--text-primary);">Current Course:</label>
+                    <select id="course-selector" class="course-selector">
+                        <option value="">No courses</option>
+                    </select>
+                </div>
+                <div class="course-actions">
+                    <button id="add-course-btn" class="btn btn-success btn-sm" style="width: 100%; margin-top: 10px;">
+                        <i class="fas fa-plus"></i> Add Course
+                    </button>
+                    <button id="rename-course-btn" class="btn btn-info btn-sm" style="width: 100%; margin-top: 5px;">
+                        <i class="fas fa-edit"></i> Rename Course
+                    </button>
+                    <button id="delete-course-btn" class="btn btn-danger btn-sm" style="width: 100%; margin-top: 5px;">
+                        <i class="fas fa-trash"></i> Delete Course
+                    </button>
+                </div>
+            </div>
+            
             <nav class="sidebar-menu">
                 <a href="#" class="menu-item active" data-tab="guide">
                     <i class="fas fa-book"></i> User Guide
+                </a>
+                <a href="#" class="menu-item" data-tab="dashboard">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
                 <a href="#" class="menu-item" data-tab="setup">
                     <i class="fas fa-cog"></i> Setup Criteria
@@ -67,6 +92,20 @@
 
         <!-- Main Content -->
         <main class="main-content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard-tab" class="tab-content">
+                <div class="box">
+                    <div class="box-header">
+                        <h2>Course Dashboard</h2>
+                    </div>
+                    <div class="box-body">
+                        <div id="dashboard-content">
+                            <p>Loading courses...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- User Guide Tab -->
             <div id="guide-tab" class="tab-content active">
                 <div class="box">
@@ -405,6 +444,4 @@
     <script src="app.js"></script>
 </body>
 </html>
-
-
 
