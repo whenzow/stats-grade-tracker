@@ -863,6 +863,17 @@ body.dark-mode .guide-quickstart h4 {
     border-radius: 4px;
 }
 
+/* Criteria groups for clearer separation */
+.criteria-group {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.criteria-group:last-of-type {
+    border-bottom: none;
+}
+
 /* Performance Analysis */
 .performance-section {
     background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
@@ -1043,6 +1054,12 @@ body.dark-mode .recommendation-box h4 {
     color: white;
     font-size: 20px;
     box-shadow: 0 4px 6px var(--shadow-color);
+}
+
+/* When sidebar is open on mobile, hide the toggle button so it doesn't cover the title */
+.mobile-menu-toggle.menu-open {
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* Responsive */
