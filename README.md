@@ -96,3 +96,4 @@ Works in all modern browsers:
 - All calculations match the original R Shiny application logic
 - The design closely matches the original application's theme (burgundy and green colors)
 
+
