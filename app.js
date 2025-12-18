@@ -1593,4 +1593,3 @@ function initializeMobileMenu() {
 // Export functions for onclick handlers
 window.addScore = addScore;
 window.removeSelectedScores = removeSelectedScores;
-
