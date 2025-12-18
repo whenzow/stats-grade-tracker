@@ -30,6 +30,7 @@ function createNewCourse(name) {
     appState.courses[courseId] = {
         id: courseId,
         name: name,
+        units: 3,
         criteria: [],
         gradeScale: [],
         componentScores: {},
@@ -120,6 +121,25 @@ function setupCourseManagement() {
             updateAllDisplays();
         }
     });
+
+    // Course units change
+    const unitsInput = document.getElementById('course-units');
+    if (unitsInput) {
+        unitsInput.addEventListener('change', function() {
+            if (!appState.currentCourseId) return;
+            const course = getCurrentCourse();
+            let units = parseFloat(this.value);
+            if (isNaN(units) || units <= 0) {
+                // Revert to previous value or default
+                units = course.units || 3;
+                this.value = units;
+                return;
+            }
+            course.units = units;
+            setCurrentCourse(course);
+            updateDashboard();
+        });
+    }
     
     // Rename course button
     document.getElementById('rename-course-btn').addEventListener('click', function() {
@@ -197,6 +217,11 @@ function updateAllDisplays() {
         
         document.getElementById('has-exemption-label').style.display = course.settings.hasFinal ? 'block' : 'none';
         document.getElementById('exemption-settings').style.display = course.settings.hasExemption ? 'block' : 'none';
+
+        const unitsInput = document.getElementById('course-units');
+        if (unitsInput) {
+            unitsInput.value = course.units || 3;
+        }
     }
     
     updateCriteriaDisplay();
@@ -221,9 +246,9 @@ function updateDashboard() {
     
     let html = '<div class="dashboard-summary">';
     
-    // Calculate semester GPA
-    let totalGPA = 0;
-    let coursesWithGrades = 0;
+    // Calculate semester GWA (units-weighted average of college grades)
+    let totalWeightedGrades = 0;
+    let totalUnits = 0;
     const courseCards = [];
     
     courseIds.forEach(courseId => {
@@ -249,36 +274,24 @@ function updateDashboard() {
             collegeGrade
         });
         
-        if (collegeGrade && !isNaN(parseFloat(collegeGrade)) && parseFloat(collegeGrade) <= 5.0) {
-            // Convert to 4.0 scale for GPA calculation (assuming 1.0 = 4.0, 5.0 = 0.0)
+        const units = typeof course.units === 'number' && course.units > 0 ? course.units : 0;
+
+        if (collegeGrade && units > 0 && !isNaN(parseFloat(collegeGrade)) && parseFloat(collegeGrade) <= 5.0) {
             const gradeValue = parseFloat(collegeGrade);
-            let gpaValue = 0;
-            if (gradeValue <= 1.0) gpaValue = 4.0;
-            else if (gradeValue <= 1.25) gpaValue = 3.75;
-            else if (gradeValue <= 1.5) gpaValue = 3.5;
-            else if (gradeValue <= 1.75) gpaValue = 3.25;
-            else if (gradeValue <= 2.0) gpaValue = 3.0;
-            else if (gradeValue <= 2.25) gpaValue = 2.75;
-            else if (gradeValue <= 2.5) gpaValue = 2.5;
-            else if (gradeValue <= 2.75) gpaValue = 2.25;
-            else if (gradeValue <= 3.0) gpaValue = 2.0;
-            else if (gradeValue <= 4.0) gpaValue = 1.0;
-            else gpaValue = 0.0;
-            
-            totalGPA += gpaValue;
-            coursesWithGrades++;
+            totalWeightedGrades += gradeValue * units;
+            totalUnits += units;
         }
     });
     
-    const semesterGPA = coursesWithGrades > 0 ? (totalGPA / coursesWithGrades).toFixed(2) : null;
+    const semesterGWA = totalUnits > 0 ? (totalWeightedGrades / totalUnits).toFixed(2) : null;
     
     // Display semester summary
-    if (semesterGPA !== null) {
+    if (semesterGWA !== null) {
         html += `
             <div class="semester-summary-box">
-                <h3><i class="fas fa-graduation-cap"></i> Semester GPA</h3>
-                <div class="semester-gpa-value">${semesterGPA}</div>
-                <p>Based on ${coursesWithGrades} course${coursesWithGrades !== 1 ? 's' : ''}</p>
+                <h3><i class="fas fa-graduation-cap"></i> Semester GWA</h3>
+                <div class="semester-gpa-value">${semesterGWA}</div>
+                <p>Based on total of ${totalUnits} unit${totalUnits !== 1 ? 's' : ''}</p>
             </div>
         `;
     }
@@ -303,8 +316,8 @@ function updateDashboard() {
                         <div class="course-stat-value">${collegeGrade || 'N/A'}</div>
                     </div>
                     <div class="course-stat">
-                        <div class="course-stat-label">Components</div>
-                        <div class="course-stat-value">${course.criteria.length}</div>
+                        <div class="course-stat-label">Units</div>
+                        <div class="course-stat-value">${typeof course.units === 'number' ? course.units : 'N/A'}</div>
                     </div>
                 </div>
             </div>
@@ -1309,9 +1322,18 @@ function setupSaveLoadHandlers() {
         const title = document.getElementById('save-title').value.trim() || 'GradeTracker';
         const filename = title.replace(/[^A-Za-z0-9_]/g, '_') + '.json';
         
-        // Save all courses
+        // Ensure each course has units before saving
+        const coursesToSave = {};
+        Object.keys(appState.courses).forEach(id => {
+            const c = appState.courses[id];
+            coursesToSave[id] = {
+                ...c,
+                units: typeof c.units === 'number' && c.units > 0 ? c.units : 3
+            };
+        });
+
         const dataToSave = {
-            courses: appState.courses,
+            courses: coursesToSave,
             currentCourseId: appState.currentCourseId,
             nextCourseId: appState.nextCourseId
         };
@@ -1338,6 +1360,13 @@ function setupSaveLoadHandlers() {
                 if (data.courses) {
                     // New format with multiple courses
                     appState.courses = data.courses || {};
+                    // Ensure units on each course
+                    Object.keys(appState.courses).forEach(id => {
+                        const c = appState.courses[id];
+                        if (typeof c.units !== 'number' || c.units <= 0) {
+                            c.units = 3;
+                        }
+                    });
                     appState.currentCourseId = data.currentCourseId || Object.keys(appState.courses)[0] || null;
                     appState.nextCourseId = data.nextCourseId || appState.nextCourseId;
                 } else {
@@ -1350,6 +1379,9 @@ function setupSaveLoadHandlers() {
                     course.examScores = data.examScores || {};
                     course.finalExam = data.finalExam || { score: 0, total: 100, include: true };
                     course.settings = data.settings || course.settings;
+                    if (typeof course.units !== 'number' || course.units <= 0) {
+                        course.units = 3;
+                    }
                     setCurrentCourse(course);
                 }
                 
@@ -1406,6 +1438,13 @@ function loadFromStorage() {
             if (data.courses) {
                 // New format with multiple courses
                 appState.courses = data.courses || {};
+                // Ensure units on each course
+                Object.keys(appState.courses).forEach(id => {
+                    const c = appState.courses[id];
+                    if (typeof c.units !== 'number' || c.units <= 0) {
+                        c.units = 3;
+                    }
+                });
                 appState.currentCourseId = data.currentCourseId || Object.keys(appState.courses)[0] || null;
                 appState.nextCourseId = data.nextCourseId || appState.nextCourseId;
             } else if (data.criteria || data.gradeScale) {
@@ -1418,6 +1457,9 @@ function loadFromStorage() {
                 course.examScores = data.examScores || {};
                 course.finalExam = data.finalExam || { score: 0, total: 100, include: true };
                 course.settings = data.settings || course.settings;
+                if (typeof course.units !== 'number' || course.units <= 0) {
+                    course.units = 3;
+                }
                 setCurrentCourse(course);
             }
             
