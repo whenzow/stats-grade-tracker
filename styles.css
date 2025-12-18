@@ -1315,4 +1315,3 @@ body.dark-mode ::-webkit-scrollbar-thumb {
 body.dark-mode ::-webkit-scrollbar-thumb:hover {
     background: var(--border-color);
 }
-
