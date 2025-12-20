@@ -37,27 +37,6 @@
             
             <!-- Course Management Section -->
             <div class="course-management">
-                <div class="course-selector-container">
-                    <label for="course-selector" style="display: block; margin-bottom: 5px; font-weight: 500; color: var(--text-primary);">Current Course:</label>
-                    <select id="course-selector" class="course-selector">
-                        <option value="">No courses</option>
-                    </select>
-                </div>
-                <div class="course-selector-container">
-                    <label for="course-units" style="display: block; margin-bottom: 5px; font-weight: 500; color: var(--text-primary);">Course Units:</label>
-                    <input type="number" id="course-units" class="course-units-input" min="0.5" step="0.5" value="3">
-                </div>
-                <div class="course-actions">
-                    <button id="add-course-btn" class="btn btn-success btn-sm" style="width: 100%; margin-top: 10px;">
-                        <i class="fas fa-plus"></i> Add Course
-                    </button>
-                    <button id="rename-course-btn" class="btn btn-info btn-sm" style="width: 100%; margin-top: 5px;">
-                        <i class="fas fa-edit"></i> Rename Course
-                    </button>
-                    <button id="delete-course-btn" class="btn btn-danger btn-sm" style="width: 100%; margin-top: 5px;">
-                        <i class="fas fa-trash"></i> Delete Course
-                    </button>
-                </div>
             </div>
             
             <nav class="sidebar-menu">
@@ -67,6 +46,16 @@
                 <a href="#" class="menu-item" data-tab="dashboard">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
+                <div class="course-selector-container" style="padding: 10px 15px; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); margin: 10px 0;">
+                    <label for="course-selector" style="display: block; margin-bottom: 5px; font-weight: 500; color: var(--text-primary); font-size: 14px;">Current Course:</label>
+                    <select id="course-selector" class="course-selector">
+                        <option value="">No courses</option>
+                    </select>
+                </div>
+                <div class="course-selector-container" style="padding: 0 15px 10px 15px;">
+                    <label for="course-units" style="display: block; margin-bottom: 5px; font-weight: 500; color: var(--text-primary); font-size: 14px;">Course Units:</label>
+                    <input type="number" id="course-units" class="course-units-input" min="0.5" step="0.5" value="3">
+                </div>
                 <a href="#" class="menu-item" data-tab="setup">
                     <i class="fas fa-cog"></i> Setup Criteria
                 </a>
@@ -75,6 +64,9 @@
                 </a>
                 <a href="#" class="menu-item" data-tab="results">
                     <i class="fas fa-chart-bar"></i> Results & Analysis
+                </a>
+                <a href="#" class="menu-item" data-tab="whatif">
+                    <i class="fas fa-question-circle"></i> What If Calculator
                 </a>
             </nav>
             <hr>
@@ -156,12 +148,13 @@
                                 <p>Define how percentages convert to college grades (e.g., 1.00, 1.25, etc.).</p>
                                 <ul>
                                     <li>Use <strong>Set Default UP Grade Scale</strong> for a quick standard setup.</li>
-                                    <li>Or manually set the <strong>minimum percentage</strong> for each college grade.</li>
+                                    <li>Or manually set the <strong>minimum percentage</strong> for each college grade in the improved table interface.</li>
                                     <li>
                                         Optionally enable <strong>rounding</strong> so scores like 94.55 are treated as 95
                                         when mapping to a college grade.
                                     </li>
                                 </ul>
+                                <p class="tip"><strong>Tip:</strong> The grade scale table now features a modern design that matches the overall application style!</p>
                             </div>
 
                             <!-- Step 4 -->
@@ -171,10 +164,11 @@
                                 <ul>
                                     <li><strong>Normal Components:</strong> Add multiple scores for each component (e.g., Quiz 1: 45/50, Quiz 2: 38/40)</li>
                                     <li><strong>Examinations:</strong> Add exam scores in the same way</li>
-                                    <li>Use the 'Add Score' button to add each entry</li>
+                                    <li>Use the <strong>'Add Score'</strong> button to add each entry - don't forget to click it!</li>
                                     <li>You can remove scores by selecting rows and clicking 'Remove Selected'</li>
                                     <li>Uncheck 'Include in calculation' to exclude a component temporarily</li>
                                 </ul>
+                                <p class="warning"><strong>Important:</strong> The app will warn you if you've entered scores but forgot to click "Add Score". Make sure to add all scores before calculating!</p>
                                 <p class="tip"><strong>Tip:</strong> You can add scores progressively as you complete requirements!</p>
                             </div>
 
@@ -193,15 +187,41 @@
 
                             <!-- Step 6 -->
                             <div class="guide-step">
-                                <h4><span>6</span> Save & Load Your Work</h4>
+                                <h4><span>6</span> What If Calculator</h4>
+                                <p>Explore different grade scenarios using the <strong>What If Calculator</strong>:</p>
+                                <ul>
+                                    <li><strong>Scenario Mode:</strong> Add or modify scores for components to see what your final grade would be</li>
+                                    <li><strong>Target Mode:</strong> Enter a target final grade and see what scores you need to achieve it</li>
+                                    <li>Compare your current grade with different scenarios side-by-side</li>
+                                    <li>Real-time calculation updates as you add or change scores</li>
+                                </ul>
+                                <p class="tip"><strong>Tip:</strong> Use this to plan your study strategy! Try different score combinations to see what you need to achieve your target grade.</p>
+                            </div>
+
+                            <!-- Step 7 -->
+                            <div class="guide-step">
+                                <h4><span>7</span> Dashboard & Semester Management</h4>
+                                <p>The <strong>Dashboard</strong> tab provides powerful tools for tracking your academic progress:</p>
+                                <ul>
+                                    <li><strong>Quick Course Entry:</strong> Add courses with just their final grade (non-editable) for quick GWA calculation when you already know the final grade</li>
+                                    <li><strong>Semester Management:</strong> Create semesters and organize your courses by academic term</li>
+                                    <li><strong>Overall GWA:</strong> See your overall GWA calculated from all courses (regular + quick courses)</li>
+                                    <li><strong>Semester GWA:</strong> Track GWA for each semester separately</li>
+                                </ul>
+                                <p class="tip"><strong>Tip:</strong> Use Quick Course Entry for courses where you already have the final grade and don't want to enter all components from scratch!</p>
+                            </div>
+
+                            <!-- Step 8 -->
+                            <div class="guide-step">
+                                <h4><span>8</span> Save & Load Your Work</h4>
                                 <p><strong>Save:</strong> Enter a file title in the sidebar and click 'Save Criteria & Scores'</p>
                                 <ul>
-                                    <li>Saves all your criteria, scores, and grade scale</li>
+                                    <li>Saves all your criteria, scores, grade scale, semesters, and quick courses</li>
                                     <li>Downloaded as a JSON file</li>
                                 </ul>
                                 <p><strong>Load:</strong> Use 'Upload Saved File' to restore your previous work</p>
                                 <ul>
-                                    <li>All your settings and scores will be restored</li>
+                                    <li>All your settings, scores, semesters, and quick courses will be restored</li>
                                     <li>Continue where you left off!</li>
                                 </ul>
                             </div>
@@ -218,6 +238,9 @@
                                     <ul>
                                         <li><i class="fas fa-check-circle"></i> Exemption eligibility checker</li>
                                         <li><i class="fas fa-check-circle"></i> Grade projections & predictions</li>
+                                        <li><i class="fas fa-check-circle"></i> What If Scenario Calculator</li>
+                                        <li><i class="fas fa-check-circle"></i> Quick Course Entry (final grade only)</li>
+                                        <li><i class="fas fa-check-circle"></i> Semester Management & Tracking</li>
                                         <li><i class="fas fa-check-circle"></i> Save/Load functionality</li>
                                     </ul>
                                 </div>
@@ -233,7 +256,9 @@
                                     <li>In <strong>'College Grade Scale Setup'</strong>, click <strong>'Set Default UP Grade Scale'</strong> or adjust the minimums manually.</li>
                                     <li>Go to the <strong>'Calculate Grades'</strong> tab and enter your scores.</li>
                                     <li>Click <strong>'Calculate Final Grade'</strong> and view results in the <strong>'Results & Analysis'</strong> tab.</li>
-                                    <li>Open the <strong>'Dashboard'</strong> tab to see all courses and your overall <strong>GWA</strong>.</li>
+                                    <li>Open the <strong>'Dashboard'</strong> tab to see all courses, create semesters, add quick courses, and track your overall <strong>GWA</strong>.</li>
+                                    <li>Try the <strong>'What If Calculator'</strong> to experiment with different scores and see what grades you'll get!</li>
+                                    <li>Use <strong>Quick Course Entry</strong> in the Dashboard for courses where you already know the final grade!</li>
                                 </ol>
                             </div>
                         </div>
@@ -438,9 +463,78 @@
                     </div>
                 </div>
             </div>
+
+            <!-- What If Calculator Tab -->
+            <div id="whatif-tab" class="tab-content">
+                <div class="box">
+                    <div class="box-header">
+                        <h2>What If Scenario Calculator</h2>
+                    </div>
+                    <div class="box-body">
+                        <p style="margin-bottom: 20px;">
+                            Explore different grade scenarios by adding or modifying scores for components. See how your final grade changes in real-time as you enter scores!
+                        </p>
+                        
+                        <!-- Target Grade Mode -->
+                        <div class="whatif-mode-selector">
+                            <label>
+                                <input type="radio" name="whatif-mode" value="scenario" checked>
+                                Scenario Mode: Add/modify scores and see what grade you'll get
+                            </label>
+                            <label>
+                                <input type="radio" name="whatif-mode" value="target">
+                                Target Mode: Enter target grade and see required scores
+                            </label>
+                        </div>
+
+                        <!-- Target Grade Input (for reverse calculator) -->
+                        <div id="target-grade-section" style="display: none; margin-bottom: 20px;">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="target-grade-input">Target Final Grade (%):</label>
+                                    <input type="number" id="target-grade-input" min="0" max="100" step="0.01" value="75">
+                                </div>
+                                <div class="form-group">
+                                    <button id="calculate-target" class="btn btn-primary">
+                                        <i class="fas fa-calculator"></i> Calculate Required Scores
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Current vs Scenario Comparison -->
+                        <div class="whatif-comparison">
+                            <div class="comparison-box">
+                                <h4><i class="fas fa-chart-line"></i> Current Grade</h4>
+                                <div id="current-grade-display" class="grade-display">
+                                    <div class="grade-value">--</div>
+                                    <div class="grade-label">Final Percentage</div>
+                                    <div class="grade-college">--</div>
+                                    <div class="grade-label">College Grade</div>
+                                </div>
+                            </div>
+                            <div class="comparison-box">
+                                <h4><i class="fas fa-lightbulb"></i> Scenario</h4>
+                                <div id="scenario-grade-display" class="grade-display">
+                                    <div class="grade-value">--</div>
+                                    <div class="grade-label">Final Percentage</div>
+                                    <div class="grade-college">--</div>
+                                    <div class="grade-label">College Grade</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Component Score Inputs -->
+                        <div id="whatif-inputs-container">
+                            <p>Please set up your grade criteria first in the Setup tab.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
     <script src="app.js"></script>
 </body>
 </html>
+
