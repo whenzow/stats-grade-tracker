@@ -258,6 +258,11 @@ function updateDashboard() {
     
     let html = '<div class="dashboard-summary">';
     
+    // Calculate overall GWA (will be completed after processing semesters and unassigned courses)
+    // Initialize variables for overall GWA calculation
+    let totalWeightedGrades = 0;
+    let totalUnits = 0;
+    
     // Semester Management Section (TOP)
     html += `
         <div class="box" style="margin-bottom: 20px;">
@@ -470,10 +475,6 @@ function updateDashboard() {
         </div>
     `;
     
-    // Calculate overall GWA including quick courses
-    let totalWeightedGrades = 0;
-    let totalUnits = 0;
-    
     // Store semester HTML to insert into semester management section
     let semestersHtml = '';
     
@@ -597,10 +598,11 @@ function updateDashboard() {
     
     const overallGWA = totalUnits > 0 ? (totalWeightedGrades / totalUnits).toFixed(2) : null;
     
-    // Display overall GWA
+    // Display overall GWA at the top
+    let overallGWAHtml = '';
     if (overallGWA !== null) {
-        html += `
-            <div class="semester-summary-box">
+        overallGWAHtml = `
+            <div class="semester-summary-box" style="margin-bottom: 20px;">
                 <h3><i class="fas fa-graduation-cap"></i> Overall GWA</h3>
                 <div class="semester-gpa-value">${overallGWA}</div>
                 <p>Based on total of ${totalUnits} unit${totalUnits !== 1 ? 's' : ''} (${courseIds.length} regular course${courseIds.length !== 1 ? 's' : ''}, ${quickCourseIds.length} quick course${quickCourseIds.length !== 1 ? 's' : ''})</p>
@@ -608,6 +610,8 @@ function updateDashboard() {
         `;
     }
     
+    // Insert Overall GWA at the top of the dashboard
+    html = html.replace('<div class="dashboard-summary">', `<div class="dashboard-summary">${overallGWAHtml}`);
     
     html += '</div>';
     container.innerHTML = html;
@@ -2428,11 +2432,13 @@ function displayPerformanceAnalysis() {
         </div>
     `;
     
+    // Grade Projections Section
+    html += generateGradeProjections(course, results);
+    
     // Exemption Analysis
-    if (appState.settings.hasFinal && appState.settings.hasExemption) {
+    if (course.settings.hasFinal && course.settings.hasExemption) {
         const exemptionColor = results.exemptEligible ? '#006400' : '#600015';
         const exemptionIcon = results.exemptEligible ? 'check-circle' : 'times-circle';
-        const exemptionBg = results.exemptEligible ? '#d4edda' : '#f8d7da';
         
         html += `
             <div class="exemption-box">
@@ -2496,6 +2502,130 @@ function displayPerformanceAnalysis() {
     }
     
     container.innerHTML = html;
+}
+
+// Generate Grade Projections
+function generateGradeProjections(course, results) {
+    let html = '<div class="projection-box"><h4><i class="fas fa-crystal-ball"></i> GRADE PROJECTIONS</h4>';
+    
+    // Find incomplete components (components without scores or with include=false)
+    const incompleteComponents = [];
+    
+    // Check normal components
+    const normalCriteria = course.criteria.filter(c => c.type === 'Normal');
+    normalCriteria.forEach((criteria, index) => {
+        const key = `comp_${index}`;
+        const scores = course.componentScores[key] || [];
+        const included = getIncludeStatus(key, 'component');
+        
+        if (scores.length === 0 || !included) {
+            incompleteComponents.push({
+                name: criteria.component,
+                weight: criteria.weight,
+                type: 'component',
+                key: key
+            });
+        }
+    });
+    
+    // Check exams
+    const examCriteria = course.criteria.filter(c => c.type === 'Exam');
+    examCriteria.forEach((criteria, index) => {
+        const key = `exam_${index}`;
+        const scores = course.examScores[key] || [];
+        const included = getIncludeStatus(key, 'exam');
+        
+        if (scores.length === 0 || !included) {
+            incompleteComponents.push({
+                name: criteria.component,
+                weight: criteria.weight,
+                type: 'exam',
+                key: key
+            });
+        }
+    });
+    
+    // Check final exam
+    if (course.settings.hasFinal && (!course.finalExam.include || course.finalExam.score === 0)) {
+        incompleteComponents.push({
+            name: 'Final Exam',
+            weight: course.settings.finalWeight,
+            type: 'final',
+            key: 'final'
+        });
+    }
+    
+    if (incompleteComponents.length === 0) {
+        html += '<p style="text-align: center; color: var(--text-secondary); padding: 15px;">All components have been completed!</p>';
+    } else {
+        // Calculate current weighted score and remaining weight
+        const currentWeightedScore = results.normalScores.reduce((sum, s) => sum + s.weightedScore, 0) +
+                                    results.examScores.reduce((sum, s) => sum + s.weightedScore, 0) +
+                                    (results.finalScore ? results.finalScore.weightedScore : 0);
+        const remainingWeight = incompleteComponents.reduce((sum, c) => sum + c.weight, 0);
+        
+        html += '<p style="margin-bottom: 15px; color: var(--text-secondary);">To achieve the following college grades, you need these scores on remaining assessments:</p>';
+        
+        // Get unique grade scales to project
+        const targetGrades = ['1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00'];
+        
+        html += '<div style="overflow-x: auto;"><table class="data-table" style="margin-top: 10px;"><thead><tr>';
+        html += '<th>Target Grade</th>';
+        html += '<th>Min %</th>';
+        incompleteComponents.forEach(comp => {
+            html += `<th>${comp.name}<br>(${comp.weight}%)</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        
+        targetGrades.forEach(targetGrade => {
+            // Find minimum percentage for this grade
+            const gradeEntry = course.gradeScale.find(gs => gs.grade === targetGrade);
+            if (!gradeEntry) return;
+            
+            const targetPercentage = gradeEntry.min;
+            const requiredTotalWeighted = targetPercentage * (results.totalWeightUsed + remainingWeight) / 100;
+            const requiredRemainingWeighted = requiredTotalWeighted - currentWeightedScore;
+            const requiredAveragePercentage = (requiredRemainingWeighted / remainingWeight) * 100;
+            
+            // Only show achievable grades
+            if (requiredAveragePercentage > 100 || requiredAveragePercentage < 0) return;
+            
+            const rowClass = requiredAveragePercentage >= 90 ? 'projection-row-green' : 
+               requiredAveragePercentage >= 60 ? 'projection-row-yellow' : 'projection-row-red';
+
+            html += `<tr class="${rowClass}">`;
+            html += `<td style="font-weight: bold;">${targetGrade}</td>`;
+            html += `<td>${targetPercentage}%</td>`;
+            
+            incompleteComponents.forEach(comp => {
+                const requiredScore = requiredAveragePercentage.toFixed(2);
+                const scoreClass = requiredScore >= 90 ? 'text-success' : requiredScore >= 75 ? 'text-warning' : 'text-danger';
+                html += `<td class="${scoreClass}" style="font-weight: bold;">${requiredScore}%</td>`;
+            });
+            
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table></div>';
+        
+        // Add interpretation guide
+        html += `
+            <div style="margin-top: 15px; padding: 12px; background: var(--bg-secondary); border-radius: 6px; font-size: 13px;">
+                <p style="margin-bottom: 8px;"><strong><i class="fas fa-info-circle"></i> How to read this table:</strong></p>
+                <ul style="margin-left: 20px; margin-top: 8px;">
+                    <li style="margin-bottom: 5px;"><span style="color: #228b22;">●</span> <strong>Green rows:</strong> Require 90% or higher </li>
+                    <li style="margin-bottom: 5px;"><span style="color: #c4941d;">●</span> <strong>Yellow rows:</strong> Require 60-89% </li>
+                    <li style="margin-bottom: 5px;"><span style="color: #d9534f;">●</span> <strong>Red rows:</strong> Require below 60% </li>
+                </ul>
+                <p style="margin-top: 12px; font-style: italic; color: var(--text-secondary);">
+                    <i class="fas fa-lightbulb"></i> Percentages shown are the <strong>average scores</strong> you need across all remaining assessments.
+                </p>
+            </div>
+        `;
+    }
+    
+    html += '</div>';
+    return html;
 }
 
 // Save/Load Handlers
