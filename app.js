@@ -48,7 +48,8 @@ function createNewCourse(name) {
         minPrefinalPercent: 72,
         finalWeight: 20
     },
-    results: null
+    results: null,
+    includeInGWA: true
 };
     appState.currentCourseId = courseId;
     return courseId;
@@ -327,6 +328,7 @@ function updateDashboard() {
                 }
             }
             
+            const includeInGWA = course.includeInGWA !== undefined ? course.includeInGWA : true;
             unassignedCoursesHtml += `
                 <div class="course-card draggable-course ${isActive ? 'active' : ''}" 
                      draggable="true" 
@@ -352,6 +354,15 @@ function updateDashboard() {
                             <div class="course-stat-value">${typeof course.units === 'number' ? course.units : 'N/A'}</div>
                         </div>
                     </div>
+                    <div class="course-card-footer" style="padding: 10px; border-top: 1px solid var(--border-light); margin-top: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: var(--text-secondary);">
+                            <input type="checkbox" 
+                                   ${includeInGWA ? 'checked' : ''} 
+                                   onclick="event.stopPropagation(); toggleCourseGWA('${courseId}', false)"
+                                   style="cursor: pointer;">
+                            <span>Include in Overall GWA</span>
+                        </label>
+                    </div>
                 </div>
             `;
         });
@@ -359,6 +370,7 @@ function updateDashboard() {
         // Add unassigned quick courses
         unassignedQuickCourses.forEach(quickCourseId => {
             const quickCourse = appState.quickCourses[quickCourseId];
+            const includeInGWA = quickCourse.includeInGWA !== undefined ? quickCourse.includeInGWA : true;
             unassignedCoursesHtml += `
                 <div class="course-card draggable-course quick-course" 
                      draggable="true" 
@@ -383,6 +395,15 @@ function updateDashboard() {
                             <div class="course-stat-label">Units</div>
                             <div class="course-stat-value">${typeof quickCourse.units === 'number' ? quickCourse.units : 'N/A'}</div>
                         </div>
+                    </div>
+                    <div class="course-card-footer" style="padding: 10px; border-top: 1px solid var(--border-light); margin-top: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: var(--text-secondary);">
+                            <input type="checkbox" 
+                                   ${includeInGWA ? 'checked' : ''} 
+                                   onclick="event.stopPropagation(); toggleCourseGWA('${quickCourseId}', true)"
+                                   style="cursor: pointer;">
+                            <span>Include in Overall GWA</span>
+                        </label>
                     </div>
                 </div>
             `;
@@ -496,14 +517,19 @@ function updateDashboard() {
                 }
                 
                 if (course) {
-                    const units = typeof course.units === 'number' && course.units > 0 ? course.units : 0;
-                    const gradeValue = getCourseGradeValue(course, isQuick);
+                    // Check if course should be included in GWA calculation
+                    const includeInGWA = course.includeInGWA !== undefined ? course.includeInGWA : true;
                     
-                    if (!isNaN(gradeValue) && gradeValue <= 5.0 && units > 0) {
-                        semesterWeightedGrades += gradeValue * units;
-                        semesterUnits += units;
-                        totalWeightedGrades += gradeValue * units;
-                        totalUnits += units;
+                    if (includeInGWA) {
+                        const units = typeof course.units === 'number' && course.units > 0 ? course.units : 0;
+                        const gradeValue = getCourseGradeValue(course, isQuick);
+                        
+                        if (!isNaN(gradeValue) && gradeValue <= 5.0 && units > 0) {
+                            semesterWeightedGrades += gradeValue * units;
+                            semesterUnits += units;
+                            totalWeightedGrades += gradeValue * units;
+                            totalUnits += units;
+                        }
                     }
                 }
             });
@@ -573,12 +599,17 @@ function updateDashboard() {
     courseIds.forEach(courseId => {
         if (!assignedCourseIds.has(courseId)) {
             const course = appState.courses[courseId];
-            const units = typeof course.units === 'number' && course.units > 0 ? course.units : 0;
-            const gradeValue = getCourseGradeValue(course, false);
+            // Check if course should be included in GWA calculation
+            const includeInGWA = course.includeInGWA !== undefined ? course.includeInGWA : true;
             
-            if (!isNaN(gradeValue) && gradeValue <= 5.0 && units > 0) {
-                totalWeightedGrades += gradeValue * units;
-                totalUnits += units;
+            if (includeInGWA) {
+                const units = typeof course.units === 'number' && course.units > 0 ? course.units : 0;
+                const gradeValue = getCourseGradeValue(course, false);
+                
+                if (!isNaN(gradeValue) && gradeValue <= 5.0 && units > 0) {
+                    totalWeightedGrades += gradeValue * units;
+                    totalUnits += units;
+                }
             }
         }
     });
@@ -586,12 +617,17 @@ function updateDashboard() {
     quickCourseIds.forEach(quickCourseId => {
         if (!assignedCourseIds.has(quickCourseId)) {
             const quickCourse = appState.quickCourses[quickCourseId];
-            const units = typeof quickCourse.units === 'number' && quickCourse.units > 0 ? quickCourse.units : 0;
-            const gradeValue = parseFloat(quickCourse.collegeGrade);
+            // Check if course should be included in GWA calculation
+            const includeInGWA = quickCourse.includeInGWA !== undefined ? quickCourse.includeInGWA : true;
             
-            if (!isNaN(gradeValue) && gradeValue <= 5.0 && units > 0) {
-                totalWeightedGrades += gradeValue * units;
-                totalUnits += units;
+            if (includeInGWA) {
+                const units = typeof quickCourse.units === 'number' && quickCourse.units > 0 ? quickCourse.units : 0;
+                const gradeValue = parseFloat(quickCourse.collegeGrade);
+                
+                if (!isNaN(gradeValue) && gradeValue <= 5.0 && units > 0) {
+                    totalWeightedGrades += gradeValue * units;
+                    totalUnits += units;
+                }
             }
         }
     });
@@ -795,7 +831,8 @@ function setupDashboardHandlers() {
                 name: name,
                 units: units,
                 collegeGrade: grade,
-                isQuick: true
+                isQuick: true,
+                includeInGWA: true
             };
             
             saveToStorage();
@@ -1013,6 +1050,7 @@ function showSemesterModal(semesterId) {
                 }
             }
             
+            const includeInGWA = course.includeInGWA !== undefined ? course.includeInGWA : true;
             coursesHtml += `
                 <div class="course-card ${isQuick ? 'quick-course' : ''}" 
                      ${!isQuick ? `onclick="switchToCourse('${courseId}')" style="cursor: pointer;"` : ''}>
@@ -1040,6 +1078,15 @@ function showSemesterModal(semesterId) {
                             <div class="course-stat-label">Units</div>
                             <div class="course-stat-value">${typeof course.units === 'number' ? course.units : 'N/A'}</div>
                         </div>
+                    </div>
+                    <div class="course-card-footer" style="padding: 10px; border-top: 1px solid var(--border-light); margin-top: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: var(--text-secondary);">
+                            <input type="checkbox" 
+                                   ${includeInGWA ? 'checked' : ''} 
+                                   onclick="event.stopPropagation(); toggleCourseGWA('${courseId}', ${isQuick})"
+                                   style="cursor: pointer;">
+                            <span>Include in Overall GWA</span>
+                        </label>
                     </div>
                 </div>
             `;
@@ -1091,6 +1138,23 @@ window.dropCourse = dropCourse;
 window.removeCourseFromSemester = removeCourseFromSemester;
 window.selectCourseForManagement = selectCourseForManagement;
 window.toggleSemesterDetails = toggleSemesterDetails;
+
+// Toggle course include in GWA calculation
+function toggleCourseGWA(courseId, isQuick) {
+    const course = isQuick ? appState.quickCourses[courseId] : appState.courses[courseId];
+    if (!course) return;
+    
+    // Toggle the includeInGWA property
+    course.includeInGWA = course.includeInGWA !== undefined ? !course.includeInGWA : false;
+    
+    // Save to storage
+    saveToStorage();
+    
+    // Update dashboard to reflect changes
+    updateDashboard();
+}
+
+window.toggleCourseGWA = toggleCourseGWA;
 
 // Semester Drag and Drop Functions
 function dragSemester(ev, semesterId) {
@@ -2758,11 +2822,15 @@ function loadFromStorage() {
             if (data.courses) {
                 // New format with multiple courses
                 appState.courses = data.courses || {};
-                // Ensure units on each course
+                // Ensure units on each course and includeInGWA property (backward compatibility)
                 Object.keys(appState.courses).forEach(id => {
                     const c = appState.courses[id];
                     if (typeof c.units !== 'number' || c.units <= 0) {
                         c.units = 3;
+                    }
+                    // Default includeInGWA to true if not present (backward compatibility)
+                    if (c.includeInGWA === undefined) {
+                        c.includeInGWA = true;
                     }
                 });
                 appState.currentCourseId = data.currentCourseId || Object.keys(appState.courses)[0] || null;
@@ -2771,6 +2839,13 @@ function loadFromStorage() {
                 appState.nextSemesterId = data.nextSemesterId || appState.nextSemesterId || 1;
                 appState.semesterOrder = data.semesterOrder || Object.keys(data.semesters || {});
                 appState.quickCourses = data.quickCourses || {};
+                // Ensure includeInGWA property on quick courses (backward compatibility)
+                Object.keys(appState.quickCourses).forEach(id => {
+                    const qc = appState.quickCourses[id];
+                    if (qc.includeInGWA === undefined) {
+                        qc.includeInGWA = true;
+                    }
+                });
             } else if (data.criteria || data.gradeScale) {
                 // Old format - migrate to new format (only if we don't already have courses)
                 if (Object.keys(appState.courses).length === 0) {
