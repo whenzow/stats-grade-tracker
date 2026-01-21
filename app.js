@@ -534,7 +534,7 @@ function updateDashboard() {
                 }
             });
             
-            const semesterGWA = semesterUnits > 0 ? (semesterWeightedGrades / semesterUnits).toFixed(2) : null;
+            const semesterGWA = semesterUnits > 0 ? (semesterWeightedGrades / semesterUnits).toFixed(3) : null;
             
             semestersHtml += `
                 <div class="semester-card draggable-semester" 
@@ -632,7 +632,7 @@ function updateDashboard() {
         }
     });
     
-    const overallGWA = totalUnits > 0 ? (totalWeightedGrades / totalUnits).toFixed(2) : null;
+    const overallGWA = totalUnits > 0 ? (totalWeightedGrades / totalUnits).toFixed(4) : null;
     
     // Display overall GWA at the top
     let overallGWAHtml = '';
